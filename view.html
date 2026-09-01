@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertifySync | Secure Document</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dashboard-body" style="display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
+    
+    <div class="background-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="modal-box" id="secure-container" style="width: 500px; max-width: 90vw; transform: translateY(0);">
+        
+        <div id="loader" style="font-size: 18px; color: #00f2fe; text-align: center;">
+            <div class="loader" style="margin: 0 auto 15px auto;"></div>
+            🕵️‍♂️ Decrypting secure link...
+        </div>
+
+        <div id="content" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                <div>
+                    <div style="font-size: 30px; margin-bottom: 5px;">🔥</div>
+                    <h2 style="color: #ff4d4d; margin: 0;">View Once Only</h2>
+                </div>
+                
+                <div style="text-align: center; background: rgba(255, 77, 77, 0.1); padding: 5px 15px; border-radius: 8px; border: 1px solid rgba(255, 77, 77, 0.3);">
+                    <div id="timer-display" style="font-size: 28px; font-weight: bold; color: #ff4d4d; font-family: monospace; line-height: 1;">10</div>
+                    <div style="font-size: 10px; color: #ff4d4d; text-transform: uppercase; font-weight: bold; margin-top: 2px;">Secs</div>
+                </div>
+            </div>
+
+            <p style="font-size: 12px; color: #a4b5d0; margin-bottom: 15px;">This document has been permanently deleted from our secure sharing server. If you refresh or close this page, it will be gone forever.</p>
+            
+            <img id="cert-image" src="" style="width: 100%; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(0, 242, 254, 0.3);">
+            
+            <h3 id="cert-course" style="color: #00f2fe; margin: 0; font-size: 20px;"></h3>
+            <p id="cert-provider" style="color: #e0ffff; margin-top: 5px;"></p>
+        </div>
+
+        <div id="error-state" style="display: none; text-align: center;">
+            <div style="font-size: 50px; margin-bottom: 10px;">🛡️</div>
+            <h2 id="error-title" style="color: #ff4d4d; margin-bottom: 10px;">Link Destroyed</h2>
+            <p id="error-desc" style="color: #a4b5d0;">This link has either expired or has already been viewed. Secure documents can only be accessed once to prevent unauthorized sharing.</p>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAmmv6EZ5I8BD_vtVTUUXtz4qo7z4jpW4Y",
+            authDomain: "certisync-7f169.firebaseapp.com",
+            projectId: "certisync-7f169",
+            storageBucket: "certisync-7f169.firebasestorage.app",
+            messagingSenderId: "15938509921",
+            appId: "1:15938509921:web:58bce73254fffef1025e20"
+        };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.firestore();
+
+        async function loadSecureDocument() {
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+            
+            if (!token) {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('error-state').style.display = 'block';
+                return;
+            }
+
+            try {
+                const docRef = db.collection('shared_links').doc(token);
+                const docSnap = await docRef.get();
+
+                if (docSnap.exists) {
+                    const data = docSnap.data();
+                    
+                    // Grab the clean image URL from Firebase
+                    const cleanUrl = data.imageUrl;
+                    
+                    // 🛡️ THE HIGH-DENSITY, ANTI-AI SECURITY GRID UPDATE
+                    // l_certifysync_logo_yva3ic = Your specific logo
+                    // w_60 = We made it VERY small to address size/count/distance
+                    // o_30 = Keeps translucency for readability
+                    // a_-30 = Slanted angle
+                    // fl_tiled = The combo of small width and tiled makes them dense
+                    const watermarkParams = 'co_white,l_text:Arial_80_bold:SECURE%20VIEW%20ONLY,a_-30,o_40';
+                    
+                    // Inject the security parameters into the Cloudinary URL
+                    const watermarkedUrl = cleanUrl.replace('/upload/', `/upload/${watermarkParams}/`);
+
+                    document.getElementById('cert-image').src = watermarkedUrl;
+                    
+                    document.getElementById('cert-course').textContent = data.course || 'Verified Certificate';
+                    document.getElementById('cert-provider').textContent = data.provider || 'CertifySync Vault';
+                    
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('content').style.display = 'block';
+
+                    // Destroy the database entry
+                    await docRef.delete().catch(e => console.error(e));
+
+                    // Start the 10-second UI Countdown
+                    let timeLeft = 10;
+                    const timerDisplay = document.getElementById('timer-display');
+                    
+                    const countdown = setInterval(() => {
+                        timeLeft--;
+                        timerDisplay.textContent = timeLeft;
+                        
+                        if (timeLeft <= 0) {
+                            clearInterval(countdown);
+                            document.getElementById('content').style.display = 'none';
+                            document.getElementById('error-title').textContent = "Time Expired";
+                            document.getElementById('error-desc').textContent = "The 10-second viewing window has closed. The file has been permanently vaporized.";
+                            document.getElementById('error-state').style.display = 'block';
+                        }
+                    }, 1000);
+
+                } else {
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('error-state').style.display = 'block';
+                }
+            } catch (error) {
+                console.error("Decryption error:", error);
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('error-state').style.display = 'block';
+            }
+        }
+        
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        window.onload = loadSecureDocument;
+    </script>
+</body>
+</html>

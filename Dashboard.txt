@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertifySync | Dashboard</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 5L90 25L90 60C90 80 50 95 50 95C50 95 10 80 10 60L10 25Z' fill='none' stroke='%2300f2fe' stroke-width='8'/><path d='M35 50L45 60L65 35' fill='none' stroke='%23f1c40f' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dashboard-body">
+    <div class="background-animation"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+    <div id="notification-container"></div>
+    
+    <nav class="navbar">
+        <div class="logo-container">
+            <svg viewBox="0 0 100 100" width="25" height="25" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 5 L90 25 L90 60 C90 80 50 95 50 95 C50 95 10 80 10 60 L10 25 Z" fill="none" stroke="#00f2fe" stroke-width="8"/>
+                <path d="M35 50 L45 60 L65 35" fill="none" stroke="#f1c40f" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h2>CertifySync</h2>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <button id="preview-portfolio-btn" class="secondary-btn nav-action-btn" style="display: none;">👁️ View Portfolio</button>
+            <button id="share-portfolio-btn" class="nav-action-btn" style="display: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #090416;">🔗 Share Portfolio</button>
+            <button id="logout-btn">Log Out</button>
+        </div>
+    </nav>
+
+    <main class="dashboard-content">
+        <div id="dashboard-main-view">
+            <div class="dashboard-header">
+                <div class="header-titles"><h1>Your Trophy Room</h1><p id="stats-counter" class="stats-counter">🏆 Loading your vault...</p></div>
+                <div class="filter-controls">
+                    <input type="text" id="search-bar" class="search-bar" placeholder="🔍 Search courses...">
+                    <select id="filter-provider" class="search-bar filter-dropdown"><option value="all">All Providers</option></select>
+                    <select id="filter-year" class="search-bar filter-dropdown"><option value="all">All Years</option></select>
+                </div>
+                <button id="upload-btn">+ Upload Certificate</button>
+                <input type="file" id="file-input" accept="image/png, image/jpeg, application/pdf" style="display: none;">
+            </div>
+            <div class="certificate-grid" id="certificate-grid"></div>
+        </div>
+
+        <div id="portfolio-preview-view" style="display: none;">
+            <button id="back-to-vault-btn" class="secondary-btn" style="margin-bottom: 30px; width: auto; padding: 10px 20px;">🔙 Back to Vault</button>
+            
+            <div class="portfolio-section">
+                <h3 style="color: #00f2fe; text-align: center; text-transform: uppercase; letter-spacing: 2px;">Skill Analytics</h3>
+                <div class="radar-chart-container"><canvas id="previewRadarChart"></canvas></div>
+            </div>
+
+            <div class="portfolio-section" style="margin-top: 50px;">
+                <h3 style="color: #00f2fe; text-align: center; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">Learning Timeline</h3>
+                <div id="preview-timeline-filters" class="timeline-filters"></div>
+                <div class="timeline" id="preview-timeline-container"></div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="upload-modal">
+        <div class="modal-box">
+            <h2>AI Double-Check</h2>
+            <div id="cert-spinner" class="ai-spinner-container" style="display: none;">
+                <div class="loader"></div><p>🤖 AI is extracting details...</p>
+            </div>
+            <div id="cert-form-container">
+                <img id="upload-preview-img" class="modal-preview-img" alt="Certificate Preview">
+                <form id="verify-form">
+                    <label>Provider</label><input type="text" id="cert-provider">
+                    <label>Course Name</label><input type="text" id="cert-course">
+                    <label>Date (Month + Year)</label><input type="text" id="cert-date">
+                    <label>Credential URL (Optional)</label><input type="url" id="cert-url-link" placeholder="https://verify.example.com/...">
+                    <div class="modal-actions">
+                        <button type="button" id="scan-again-upload-btn" class="secondary-btn">↻ Scan Again</button>
+                        <button type="button" id="cancel-btn" class="secondary-btn">Cancel</button>
+                        <button type="button" id="confirm-btn">Confirm & Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="edit-modal"><div class="modal-box"><h2>✏️ Edit Certificate</h2><div id="edit-spinner" class="ai-spinner-container" style="display: none;"><div class="loader"></div><p>🤖 AI is extracting details...</p></div><div id="edit-form-container"><form id="edit-form"><label>Provider</label><input type="text" id="edit-provider"><label>Course Name</label><input type="text" id="edit-course"><label>Date (Month + Year)</label><input type="text" id="edit-date"><label>Credential URL (Optional)</label><input type="url" id="edit-url-link" placeholder="https://verify.example.com/..."><div class="modal-actions"><button type="button" id="scan-again-edit-btn" class="secondary-btn">↻ Scan Again</button><button type="button" id="cancel-edit-btn" class="secondary-btn">Cancel</button><button type="button" id="save-edit-btn">Save Changes</button></div></form></div></div></div>
+    <div class="modal-overlay" id="delete-modal"><div class="modal-box"><div style="font-size: 40px; margin-bottom: 10px;">🗑️</div><h2>Delete Certificate?</h2><p>This will permanently erase the file from your vault.</p><div class="modal-actions"><button type="button" id="cancel-delete-btn" class="secondary-btn">Cancel</button><button type="button" id="confirm-delete-btn" style="background: linear-gradient(135deg, #ff4d4d, #cc0000); color: white;">Yes, Delete</button></div></div></div>
+    <div class="modal-overlay" id="share-modal"><div class="modal-box"><div style="font-size: 40px; margin-bottom: 10px;">🕵️‍♂️</div><h2>Mission Impossible Link</h2><p>This secure link will self-destruct 1 second after opening.</p><input type="text" id="share-link-input" readonly style="text-align: center; color: #f1c40f; font-weight: bold; background: rgba(241, 196, 15, 0.1); border-color: #f1c40f;"><div class="modal-actions"><button type="button" id="close-share-btn" class="secondary-btn">Close</button><button type="button" id="copy-share-btn" style="background: linear-gradient(135deg, #f1c40f, #f39c12); color: #090416;">Copy Link</button></div></div></div>
+    <div class="modal-overlay" id="share-profile-modal"><div class="modal-box"><div style="font-size: 40px; margin-bottom: 10px;">🌍</div><h2>Public Portfolio Link</h2><p>Share this link with recruiters to show your public timeline.</p><input type="text" id="profile-link-input" readonly style="text-align: center; color: #00f2fe; font-weight: bold; background: rgba(0, 242, 254, 0.1); border-color: #00f2fe;"><div class="modal-actions"><button type="button" id="close-profile-btn" class="secondary-btn">Close</button><button type="button" id="copy-profile-btn" style="background: linear-gradient(135deg, #00f2fe, #4facfe); color: #090416;">Copy Link</button></div></div></div>
+
+    <div class="modal-overlay" id="lightbox-modal">
+        <div class="lightbox-content">
+            <button id="close-lightbox-btn" class="lightbox-close">×</button>
+            <img id="lightbox-img" src="" alt="Full Certificate">
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

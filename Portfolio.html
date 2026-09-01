@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verified Portfolio | CertifySync</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 5L90 25L90 60C90 80 50 95 50 95C50 95 10 80 10 60L10 25Z' fill='none' stroke='%2300f2fe' stroke-width='8'/><path d='M35 50L45 60L65 35' fill='none' stroke='%23f1c40f' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dashboard-body">
+    <div class="background-animation"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+
+    <nav class="navbar" style="justify-content: center;">
+        <div class="logo-container">
+            <svg viewBox="0 0 100 100" width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 5 L90 25 L90 60 C90 80 50 95 50 95 C50 95 10 80 10 60 L10 25 Z" fill="none" stroke="#00f2fe" stroke-width="8"/>
+                <path d="M35 50 L45 60 L65 35" fill="none" stroke="#f1c40f" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h2 style="font-size: 28px;">Verified Credential Portfolio</h2>
+        </div>
+    </nav>
+
+    <main class="dashboard-content" style="max-width: 900px;">
+        <div id="loading-state" style="text-align: center; margin-top: 100px;">
+            <div class="loader" style="margin: 0 auto;"></div><p style="color: #00f2fe; margin-top: 20px;">Analyzing verified credentials...</p>
+        </div>
+
+        <div id="portfolio-content" style="display: none;">
+            <div class="portfolio-section">
+                <h3 style="color: #00f2fe; text-align: center; text-transform: uppercase; letter-spacing: 2px;">Skill Analytics</h3>
+                <div class="radar-chart-container"><canvas id="skillRadarChart"></canvas></div>
+            </div>
+
+            <div class="portfolio-section" style="margin-top: 50px;">
+                <h3 style="color: #00f2fe; text-align: center; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">Learning Timeline</h3>
+                <div id="timeline-filters" class="timeline-filters"></div>
+                <div class="timeline" id="timeline-container"></div>
+            </div>
+        </div>
+
+        <div id="empty-state" style="display: none; text-align: center; margin-top: 100px; color: #a4b5d0;">
+            <div style="font-size: 50px;">📭</div><h2>No Public Credentials</h2><p>This user has not made any certificates public yet.</p>
+        </div>
+    </main>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+    apiKey: "AIzaSyAmmv6EZ5I8BD_vtVTUUXtz4qo7z4jpW4Y",
+    authDomain: "certisync-7f169.firebaseapp.com",
+    projectId: "certisync-7f169",
+    storageBucket: "certisync-7f169.firebasestorage.app",
+    messagingSenderId: "15938509921",
+    appId: "1:15938509921:web:58bce73254fffef1025e20"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const timelineContainer = document.getElementById('timeline-container');
+        const filterContainer = document.getElementById('timeline-filters');
+        const loadingState = document.getElementById('loading-state');
+        const portfolioContent = document.getElementById('portfolio-content');
+        const emptyState = document.getElementById('empty-state');
+
+        const params = new URLSearchParams(window.location.search);
+        const targetUserId = params.get('user');
+
+        if (!targetUserId) {
+            loadingState.style.display = 'none'; emptyState.innerHTML = '<h2>Invalid Link</h2><p>No user profile specified.</p>'; emptyState.style.display = 'block';
+        } else {
+            loadPortfolio();
+        }
+
+        function parseDateString(dateStr) {
+            if(!dateStr) return 0; const d = new Date(dateStr); if(!isNaN(d.getTime())) return d.getTime();
+            const yearMatch = dateStr.match(/\d{4}/); if(yearMatch) return new Date(yearMatch[0], 0, 1).getTime(); return 0;
+        }
+
+        // THE CATEGORY ENGINE
+        function getCategory(cert) {
+            const text = (cert.course + " " + cert.provider).toLowerCase();
+            if (text.match(/html|css|javascript|react|vue|angular|ui|ux|frontend|web/)) return "Frontend";
+            if (text.match(/node|python|java|c\+\+|sql|mongo|database|backend|api/)) return "Backend/DB";
+            if (text.match(/aws|azure|gcp|cloud|docker|kubernetes|linux|devops/)) return "Cloud & DevOps";
+            if (text.match(/data|ai|machine learning|deep learning|analytics|gpt/)) return "Data & AI";
+            if (text.match(/security|cyber|hack|pentest|comptia/)) return "Security";
+            return "General IT";
+        }
+
+        // --- REPLACE YOUR ENTIRE loadPortfolio FUNCTION WITH THIS ---
+async function loadPortfolio() {
+    try {
+        // 🚨 CRITICAL FIX: We MUST tell Firebase we only want the public ones!
+        // If we don't include this .where(), Firebase instantly throws a permission-denied error.
+        const snapshot = await db.collection('certificates')
+            .where('userId', '==', targetUserId)
+            .where('isPublic', '==', true) 
+            .get();
+            
+        const publicCerts = [];
+        snapshot.forEach(doc => { 
+            publicCerts.push(doc.data()); 
+        });
+
+        if (publicCerts.length === 0) { 
+            loadingState.style.display = 'none'; 
+            emptyState.style.display = 'block'; 
+            return; 
+        }
+        
+        publicCerts.sort((a, b) => parseDateString(b.date) - parseDateString(a.date));
+
+        buildRadarChart(publicCerts);
+        buildChipsAndTimeline(publicCerts);
+
+        loadingState.style.display = 'none';
+        portfolioContent.style.display = 'block';
+    } catch (error) { 
+        console.error("Portfolio Error:", error); 
+        loadingState.innerHTML = '<p style="color: #ff4d4d;">Error loading data from the vault.</p>'; 
+    }
+}
+// -----------------------------------------------------------
+
+        // DYNAMIC CATEGORY CHIP BUILDER
+        function buildChipsAndTimeline(allCerts) {
+            const availableCategories = new Set();
+            allCerts.forEach(cert => availableCategories.add(getCategory(cert)));
+            
+            filterContainer.innerHTML = '';
+            
+            // "All" Button
+            const allBtn = document.createElement('button');
+            allBtn.className = 'filter-chip active';
+            allBtn.textContent = `All (${allCerts.length})`;
+            allBtn.onclick = () => filterTimeline("All", allCerts, allBtn);
+            filterContainer.appendChild(allBtn);
+
+            // Category Buttons
+            Array.from(availableCategories).sort().forEach(cat => {
+                const count = allCerts.filter(c => getCategory(c) === cat).length;
+                const btn = document.createElement('button');
+                btn.className = 'filter-chip';
+                btn.textContent = `${cat} (${count})`;
+                btn.onclick = () => filterTimeline(cat, allCerts, btn);
+                filterContainer.appendChild(btn);
+            });
+
+            // Initial render
+            renderTimeline(allCerts);
+        }
+
+        function filterTimeline(category, allCerts, activeBtn) {
+            document.querySelectorAll('#timeline-filters .filter-chip').forEach(btn => btn.classList.remove('active'));
+            activeBtn.classList.add('active');
+            const filtered = category === "All" ? allCerts : allCerts.filter(c => getCategory(c) === category);
+            renderTimeline(filtered);
+        }
+
+        function renderTimeline(certs) {
+            timelineContainer.innerHTML = '';
+            certs.forEach((cert, index) => {
+                const side = index % 2 === 0 ? 'left' : 'right';
+                const cleanUrl = cert.imageUrl;
+                const watermarkParams = 'co_white,l_text:Arial_60_bold:VERIFIED%20VIA%20CertifySync,a_-30,o_40';
+                const watermarkedUrl = cleanUrl.replace('/upload/', `/upload/${watermarkParams}/`);
+                let verifyHtml = ''; if (cert.credentialUrl) verifyHtml = `<a href="${cert.credentialUrl}" target="_blank" class="timeline-verify-btn">🔗 Verify Credential</a>`;
+
+                const item = document.createElement('div');
+                item.className = `timeline-item ${side}`;
+                item.innerHTML = `
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <img src="${watermarkedUrl}" alt="Certificate">
+                        <h3 class="timeline-title-compact">${cert.course || 'Certificate'}</h3>
+                        <div class="timeline-details">
+                            <h4>${cert.provider || 'Provider'}</h4>
+                            <span class="timeline-date">${cert.date || 'Completed'}</span>
+                            ${verifyHtml}
+                        </div>
+                    </div>
+                `;
+                timelineContainer.appendChild(item);
+            });
+        }
+
+        function buildRadarChart(certs) {
+            let skills = { "Frontend": 0, "Backend/DB": 0, "Cloud & DevOps": 0, "Data & AI": 0, "Security": 0, "General IT": 0 };
+            certs.forEach(cert => { skills[getCategory(cert)] += 1; });
+            const dataValues = Object.values(skills).map(v => v === 0 ? 0.5 : v + 1); 
+            const ctx = document.getElementById('skillRadarChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: { labels: Object.keys(skills), datasets: [{ label: 'Skill Proficiency', data: dataValues, backgroundColor: 'rgba(0, 242, 254, 0.2)', borderColor: '#00f2fe', pointBackgroundColor: '#f1c40f', pointBorderColor: '#fff', pointHoverBackgroundColor: '#fff', pointHoverBorderColor: '#f1c40f', borderWidth: 2 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: 'rgba(255, 255, 255, 0.1)' }, grid: { color: 'rgba(255, 255, 255, 0.1)' }, pointLabels: { color: '#e0ffff', font: { size: 14, family: 'Segoe UI' } }, ticks: { display: false, min: 0 } } }, plugins: { legend: { display: false } } }
+            });
+        }
+        document.addEventListener('contextmenu', e => e.preventDefault());
+    </script>
+</body>
+</html>
